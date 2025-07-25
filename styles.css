@@ -69,3 +69,29 @@ a {
 a:hover {
   text-decoration: underline;
 }
+
+.club-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+  justify-content: center;
+  padding: 1em 0;
+}
+
+.club-card {
+  background-color: #111;
+  border: 1px solid #333;
+  padding: 1em 2em;
+  text-align: center;
+  font-weight: bold;
+  color: #ff4d4d;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background 0.3s ease;
+}
+
+.club-card:hover {
+  background-color: #b20000;
+  color: white;
+}
+
