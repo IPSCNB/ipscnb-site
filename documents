@@ -1,0 +1,21 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>IPSC NB Documents</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header>
+    <h1>Fundy Shooting Sports</h1>
+  </header>
+  <main>
+    <section class="club-info">
+      <p><a href="" target="_blank">IPSCNB Black Badge Recertification Policy</a></p>
+      <p><a href="" target="_blank">IPSCNB Constitution</a></p>
+    </section>
+    <p><a href="../index.html" class="btn">Back to Home</a></p>
+  </main>
+</body>
+</html>
