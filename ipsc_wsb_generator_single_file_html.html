@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IPSC WSB PDF Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <style>
+    :root{--bg:#0b0f14;--card:#131a22;--ink:#e7eef7;--muted:#97a3b6;--accent:#1e90ff;--line:#223042}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    .wrap{max-width:1000px;margin:24px auto;padding:16px}
+    h1{font-size:26px;margin:0 0 12px} .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 6px 24px rgba(0,0,0,.2)}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+    .col-6{grid-column:span 6} .col-12{grid-column:span 12} .col-4{grid-column:span 4}
+    label{display:block;font-size:12px;color:var(--muted);margin:4px 0}
+    input[type="text"],input[type="number"],select,textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#0f1520;color:var(--ink)}
+    textarea{min-height:90px;resize:vertical}
+    .row{display:flex;gap:8px;align-items:center}
+    .btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:white;border:0;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .muted{color:var(--muted)}
+    .targets{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+    .footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px;color:var(--muted)}
+    .logo-preview{height:40px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>IPSC WSB PDF Generator</h1>
+    <div class="card">
+      <div class="grid">
+        <div class="col-6">
+          <label>Stage Name</label>
+          <input id="stageName" type="text" placeholder="Corner Hustle" />
+        </div>
+        <div class="col-3">
+          <label>Course Type</label>
+          <select id="courseType">
+            <option>Short</option>
+            <option>Medium</option>
+            <option>Long</option>
+          </select>
+        </div>
+        <div class="col-3">
+          <label>Bay</label>
+          <input id="bay" type="text" placeholder="Bay 1 – 30×30" />
+        </div>
+        <div class="col-3">
+          <label>Round Count</label>
+          <input id="roundCount" type="number" min="0" placeholder="22" />
+        </div>
+        <div class="col-3">
+          <label>Max Time (optional)</label>
+          <input id="maxTime" type="text" placeholder="120 sec" />
+        </div>
+        <div class="col-6">
+          <label>Start Signal</label>
+          <input id="startSignal" type="text" value="Audible" />
+        </div>
+        <div class="col-12">
+          <label>Start Position</label>
+          <textarea id="startPosition" placeholder="Facing uprange, wrists above shoulders. Gun loaded and holstered."></textarea>
+        </div>
+        <div class="col-12">
+          <label>Firearm Ready Condition</label>
+          <input id="readyCondition" type="text" placeholder="Loaded & holstered" />
+        </div>
+        <div class="col-12">
+          <label>Procedure</label>
+          <textarea id="procedure" placeholder="At start signal, engage all targets as visible from within the shooting area."></textarea>
+        </div>
+        <div class="col-12">
+          <label>Setup Notes (optional)</label>
+          <textarea id="setupNotes" placeholder="Plates at 12–15 m. Ensure steel min. distance per rules."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label>Targets (leave 0 blank to hide on WSB)</label>
+      <div class="targets">
+        <div>
+          <label>Paper</label>
+          <input id="tPaper" type="number" min="0" placeholder="0" />
+        </div>
+        <div>
+          <label>Mini Paper</label>
+          <input id="tMiniPaper" type="number" min="0" placeholder="0" />
+        </div>
+        <div>
+          <label>Popper</label>
+          <input id="tPopper" type="number" min="0" placeholder="0" />
+        </div>
+        <div>
+          <label>Mini Popper</label>
+          <input id="tMiniPopper" type="number" min="0" placeholder="0" />
+        </div>
+        <div>
+          <label>Plate</label>
+          <input id="tPlate" type="number" min="0" placeholder="0" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="grid">
+        <div class="col-6">
+          <label>Stage Diagram (optional image)</label>
+          <input id="diagram" type="file" accept="image/*" />
+        </div>
+        <div class="col-6">
+          <label>Header Logo (optional image)</label>
+          <input id="logo" type="file" accept="image/*" />
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="btn" id="downloadBtn">Download PDF</button>
+      <span class="muted">Single file. No logins. Works offline.</span>
+    </div>
+
+    <div class="footer">
+      <div>Tip: Save this file and drop it on your IPSC NB site later.</div>
+      <div id="preview"></div>
+    </div>
+  </div>
+
+<script>
+const { jsPDF } = window.jspdf;
+
+function wrapText(doc, text, x, y, maxWidth, lineHeight){
+  const words = (text||'').toString().split(/\s+/);
+  let line = '', lines=[];
+  for(const w of words){
+    const test = line ? line + ' ' + w : w;
+    const wWidth = doc.getTextWidth(test);
+    if (wWidth > maxWidth && line){
+      lines.push(line); line = w; 
+    } else { line = test; }
+  }
+  if (line) lines.push(line);
+  lines.forEach((ln,i)=> doc.text(ln, x, y + i*lineHeight));
+  return y + lines.length*lineHeight;
+}
+
+async function toImageData(file){
+  if(!file) return null;
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function buildTargetsLine(values){
+  const parts = [];
+  if (+values.paper > 0) parts.push(`Paper ${+values.paper}`);
+  if (+values.miniPaper > 0) parts.push(`Mini Paper ${+values.miniPaper}`);
+  if (+values.popper > 0) parts.push(`Popper ${+values.popper}`);
+  if (+values.miniPopper > 0) parts.push(`Mini Popper ${+values.miniPopper}`);
+  if (+values.plate > 0) parts.push(`Plate ${+values.plate}`);
+  return parts.join(', ');
+}
+
+async function generatePDF(){
+  const doc = new jsPDF({unit:'pt', format:'a4'}); // 595 x 842 pt
+  const margin = 40;
+  let x = margin, y = margin;
+  const maxW = 595 - margin*2;
+  const lh = 16;
+
+  // Gather form values
+  const v = {
+    stage: document.getElementById('stageName').value.trim(),
+    type: document.getElementById('courseType').value,
+    bay: document.getElementById('bay').value.trim(),
+    rounds: document.getElementById('roundCount').value.trim(),
+    maxTime: document.getElementById('maxTime').value.trim(),
+    signal: document.getElementById('startSignal').value.trim() || 'Audible',
+    startPos: document.getElementById('startPosition').value.trim(),
+    ready: document.getElementById('readyCondition').value.trim(),
+    proc: document.getElementById('procedure').value.trim(),
+    notes: document.getElementById('setupNotes').value.trim(),
+    paper: document.getElementById('tPaper').value,
+    miniPaper: document.getElementById('tMiniPaper').value,
+    popper: document.getElementById('tPopper').value,
+    miniPopper: document.getElementById('tMiniPopper').value,
+    plate: document.getElementById('tPlate').value
+  };
+
+  const targetsLine = buildTargetsLine(v);
+
+  // Optional images
+  const logoFile = document.getElementById('logo').files[0];
+  const diagFile = document.getElementById('diagram').files[0];
+  const logoData = await toImageData(logoFile);
+  const diagData = await toImageData(diagFile);
+
+  // Header
+  if (logoData){
+    doc.addImage(logoData, 'PNG', x, y, 120, 40);
+    y += 50;
+  }
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(16);
+  doc.text('IPSC New Brunswick – Written Stage Briefing', x, y); y += 18;
+
+  doc.setFontSize(12);
+  doc.setFont('helvetica','normal');
+  const lineA = `Stage: ${v.stage || '—'}    Course type: ${v.type}`;
+  const lineB = `Rounds to be scored: ${v.rounds || '—'}    Bay: ${v.bay || '—'}`;
+  doc.text(lineA, x, y); y += lh;
+  doc.text(lineB, x, y); y += lh;
+  if (v.maxTime){ doc.text(`Max time: ${v.maxTime}`, x, y); y += lh; }
+  doc.text(`Start signal: ${v.signal || 'Audible'}`, x, y); y += lh + 6;
+
+  // Sections
+  doc.setFont('helvetica','bold'); doc.text('START POSITION:', x, y); y += lh;
+  doc.setFont('helvetica','normal'); y = wrapText(doc, v.startPos || '—', x, y, maxW, lh) + 8;
+
+  doc.setFont('helvetica','bold'); doc.text('FIREARM READY CONDITION:', x, y); y += lh;
+  doc.setFont('helvetica','normal'); y = wrapText(doc, v.ready || '—', x, y, maxW, lh) + 8;
+
+  doc.setFont('helvetica','bold'); doc.text('STAGE PROCEDURE:', x, y); y += lh;
+  doc.setFont('helvetica','normal'); y = wrapText(doc, v.proc || '—', x, y, maxW, lh) + 8;
+
+  doc.setFont('helvetica','bold'); doc.text('TARGETS:', x, y); y += lh;
+  doc.setFont('helvetica','normal'); y = wrapText(doc, targetsLine || '—', x, y, maxW, lh) + 8;
+
+  if (v.notes){
+    doc.setFont('helvetica','bold'); doc.text('SETUP NOTES:', x, y); y += lh;
+    doc.setFont('helvetica','normal'); y = wrapText(doc, v.notes, x, y, maxW, lh) + 8;
+  }
+
+  if (diagData){
+    doc.setFont('helvetica','bold'); doc.text('Stage Diagram:', x, y); y += lh;
+    const imgW = maxW; const imgH = imgW * 0.6; // simple aspect
+    if (y + imgH > 812){ doc.addPage(); y = margin; }
+    doc.addImage(diagData, 'PNG', x, y, imgW, imgH);
+    y += imgH + 8;
+  }
+
+  // Footer
+  doc.setFontSize(9); doc.setTextColor(120);
+  const when = new Date().toLocaleString();
+  doc.text(`Generated ${when}`, x, 830);
+
+  doc.save(`WSB - ${v.stage || 'Stage'}.pdf`);
+}
+
+document.getElementById('downloadBtn').addEventListener('click', generatePDF);
+</script>
+</body>
+</html>
